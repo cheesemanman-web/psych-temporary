@@ -15,7 +15,7 @@ jobs:
     runs-on: macos-15
 
     env:
-      PROJECT_PATH: MyApp.xcodeproj
+      PROJECT_PATH: PsychEngine.xcodeproj
       SCHEME: MyApp
 
     steps:
@@ -46,7 +46,7 @@ jobs:
             -sdk iphoneos \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/MyApp.xcarchive" \
+            -archivePath "$RUNNER_TEMP/PsychEngine.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
             archive
 
@@ -54,7 +54,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/Payload"
 
-          APP=$(find "$RUNNER_TEMP/MyApp.xcarchive/Products/Applications" \
+          APP=$(find "$RUNNER_TEMP/PsychEngine.xcarchive/Products/Applications" \
             -maxdepth 1 -name "*.app" -print -quit)
 
           if [ -z "$APP" ]; then
@@ -66,11 +66,11 @@ jobs:
 
           cd "$RUNNER_TEMP"
           ditto -c -k --sequesterRsrc --keepParent \
-            Payload Unsigned-iPhone.ipa
+            Payload PsychEngine.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: Unsigned-iPhone-IPA
-          path: ${{ runner.temp }}/Unsigned-iPhone.ipa
+          path: ${{ runner.temp }}/PsychEngine.ipa
           if-no-files-found: error
