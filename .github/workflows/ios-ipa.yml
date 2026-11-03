@@ -52,7 +52,6 @@ jobs:
             -archivePath "$RUNNER_TEMP/MyApp.xcarchive" \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -jobs 1 \
-            -parallelizeTargets NO \
             IPHONEOS_DEPLOYMENT_TARGET=12.0 \
             CODE_SIGNING_ALLOWED=NO \
             archive 2>&1 | tee "$RUNNER_TEMP/xcode-build.log"
