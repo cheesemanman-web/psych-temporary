@@ -1,5 +1,5 @@
 
-name: Build iPhone IPA
+name: Build Psych Engine iOS
 
 on:
   workflow_dispatch:
@@ -7,53 +7,55 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
+env:
+  PROJECT_PATH: PsychEngine.xcodeproj
+  SCHEME: PsychEngine
 
 jobs:
-  build:
+  build-ios:
     runs-on: macos-15
 
-    env:
-      PROJECT_PATH: PsychEngine.xcodeproj
-      SCHEME: PsychEngine
-
     steps:
-      - name: Checkout project
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Select Xcode
+      - name: Install Haxe and Neko
         run: |
-          xcodebuild -version
-          xcodebuild -showsdks
-
-      - name: Find project schemes
-        run: |
-          xcodebuild -list -project "$PROJECT_PATH"
-
-      - name: Resolve dependencies
-        run: |
-          xcodebuild \
-            -resolvePackageDependencies \
-            -project "$PROJECT_PATH" \
-            -scheme "$SCHEME"
-            
-      - name: Install Haxe
-        run: |
-          brew update
           brew install haxe neko
-
           echo "$(brew --prefix haxe)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix neko)/bin" >> "$GITHUB_PATH"
 
           haxe -version
+          neko -version
           haxelib version
-          
-      - name: Install Haxe dependencies
+
+      - name: Configure Haxelib
         run: |
-          haxelib setup ~/haxelib
-          haxelib install hmm
-          haxelib run hmm install
+          haxelib setup "$HOME/haxelib"
+
+      - name: Install Haxe compiler backend
+        run: |
+          haxelib install hxcpp
+
+      - name: Install Project.xml dependencies
+        run: |
+          haxelib install lime
+          haxelib install openfl
+
+          haxelib install flixel 5.6.1
+          haxelib install flixel-addons 3.2.2
+          haxelib install tjson 1.4.0
+          haxelib install hxdiscord_rpc 1.2.4
+          haxelib install flxanimate
+
+      - name: Verify Haxe libraries
+        run: |
+          haxelib list
+
+      - name: Show Xcode version
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
 
       - name: Archive iPhone app
         run: |
@@ -65,7 +67,7 @@ jobs:
             -sdk iphoneos \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/MyApp.xcarchive" \
+            -archivePath "$RUNNER_TEMP/PsychEngine.xcarchive" \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -jobs 1 \
             IPHONEOS_DEPLOYMENT_TARGET=12.0 \
@@ -87,12 +89,13 @@ jobs:
           cp -R "$APP" "$RUNNER_TEMP/Payload/"
 
           cd "$RUNNER_TEMP"
+
           ditto -c -k --sequesterRsrc --keepParent \
-            Payload PsychEngine.ipa
+            Payload PsychEngine-iOS.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Unsigned-iPhone-IPA
-          path: ${{ runner.temp }}/PsychEngine.ipa
+          name: PsychEngine-iOS-IPA
+          path: ${{ runner.temp }}/PsychEngine-iOS.ipa
           if-no-files-found: error
