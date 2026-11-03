@@ -16,49 +16,99 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - name: Checkout source
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install Haxe and Neko
         run: |
           brew install haxe neko
+
           echo "$(brew --prefix haxe)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix neko)/bin" >> "$GITHUB_PATH"
 
           haxe -version
           neko -version
-          haxelib version
 
-      - name: Configure Haxelib
+      - name: Install repository Haxe dependencies
         run: |
-          haxelib setup "$HOME/haxelib"
-
-      - name: Install Haxe compiler backend
-        run: |
-          haxelib install hxcpp
-
-      - name: Install Psych Engine 1.0.4 dependencies
-        run: |
-          haxelib install lime 8.1.2
-          haxelib install openfl 9.3.3
+          cd setup
+          sh unix.sh
 
           haxelib set lime 8.1.2
           haxelib set openfl 9.3.3
 
-          haxelib install flixel 5.6.1
-          haxelib install flixel-addons 3.2.2
-          haxelib install flixel-tools 1.5.1
-          haxelib install hscript-iris 1.1.3
-          haxelib install tjson 1.4.0
-          haxelib install hxdiscord_rpc 1.2.4
+          haxelib install hxcpp 4.3.0
 
-          haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate 768740a56b26aa0c072720e0d1236b94afe68e3e
-
-          haxelib install hxcpp
-
-      - name: Verify Haxe libraries
+      - name: Fix Windows paths in Build.hxml
         run: |
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import subprocess
+
+          build_file = pathlib.Path("PsychEngine/haxe/Build.hxml")
+
+          if not build_file.exists():
+              raise SystemExit(f"Missing file: {build_file}")
+
+          original = build_file.read_text()
+          updated = []
+
+          for line in original.splitlines():
+              match = re.match(
+                  r"^(-cp )C:/HaxeToolkit/haxe/lib/([^/]+)/.*$",
+                  line
+              )
+
+              if match:
+                  library = match.group(2)
+
+                  result = subprocess.run(
+                      ["haxelib", "path", library],
+                      capture_output=True,
+                      text=True
+                  )
+
+                  if result.returncode != 0:
+                      raise SystemExit(
+                          f"Could not find Haxelib library: {library}\n"
+                          + result.stderr
+                      )
+
+                  paths = [
+                      item[4:].strip()
+                      for item in result.stdout.splitlines()
+                      if item.startswith("-cp ")
+                  ]
+
+                  if not paths:
+                      raise SystemExit(
+                          f"No classpath returned for {library}"
+                      )
+
+                  line = "-cp " + paths[0]
+                  print(f"Fixed {library}: {paths[0]}")
+
+              updated.append(line)
+
+          build_file.write_text("\n".join(updated) + "\n")
+          print("Build.hxml updated successfully.")
+          PY
+
+      - name: Verify Haxe environment
+        run: |
+          echo "=== Haxe ==="
+          haxe -version
+
+          echo "=== Haxelib ==="
+          haxelib config
           haxelib list
+
+          echo "=== OpenFL ==="
+          haxelib path openfl
+
+          echo "=== Build.hxml ==="
+          cat PsychEngine/haxe/Build.hxml
 
       - name: Show Xcode version
         run: |
@@ -78,7 +128,7 @@ jobs:
             -archivePath "$RUNNER_TEMP/PsychEngine.xcarchive" \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -jobs 1 \
-            IPHONEOS_DEPLOYMENT_TARGET=12.0 \
+            IPHONEOS_DEPLOYMENT_TARGET=14.0 \
             CODE_SIGNING_ALLOWED=NO \
             archive 2>&1 | tee "$RUNNER_TEMP/xcode-build.log"
 
