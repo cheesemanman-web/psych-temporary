@@ -16,7 +16,7 @@ jobs:
 
     env:
       PROJECT_PATH: PsychEngine.xcodeproj
-      SCHEME: MyApp
+      SCHEME: PsychEngine
 
     steps:
       - name: Checkout project
