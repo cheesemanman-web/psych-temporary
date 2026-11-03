@@ -37,7 +37,23 @@ jobs:
             -resolvePackageDependencies \
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME"
+            
+      - name: Install Haxe
+        run: |
+          brew update
+          brew install haxe neko
 
+          echo "$(brew --prefix haxe)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix neko)/bin" >> "$GITHUB_PATH"
+
+          haxe -version
+          haxelib version
+          
+      - name: Install Haxe dependencies
+        run: |
+          haxelib setup ~/haxelib
+          haxelib install hmm
+          haxelib run hmm install
 
       - name: Archive iPhone app
         run: |
