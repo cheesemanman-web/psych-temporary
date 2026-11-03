@@ -37,16 +37,24 @@ jobs:
         run: |
           haxelib install hxcpp
 
-      - name: Install Project.xml dependencies
+      - name: Install Psych Engine 1.0.4 dependencies
         run: |
-          haxelib install lime
-          haxelib install openfl
+          haxelib install lime 8.1.2
+          haxelib install openfl 9.3.3
+
+          haxelib set lime 8.1.2
+          haxelib set openfl 9.3.3
 
           haxelib install flixel 5.6.1
           haxelib install flixel-addons 3.2.2
+          haxelib install flixel-tools 1.5.1
+          haxelib install hscript-iris 1.1.3
           haxelib install tjson 1.4.0
           haxelib install hxdiscord_rpc 1.2.4
-          haxelib install flxanimate
+
+          haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate 768740a56b26aa0c072720e0d1236b94afe68e3e
+
+          haxelib install hxcpp
 
       - name: Verify Haxe libraries
         run: |
