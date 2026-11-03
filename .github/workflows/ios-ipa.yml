@@ -1,0 +1,76 @@
+
+name: Build iPhone IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    env:
+      PROJECT_PATH: MyApp.xcodeproj
+      SCHEME: MyApp
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Find project schemes
+        run: |
+          xcodebuild -list -project "$PROJECT_PATH"
+
+      - name: Resolve dependencies
+        run: |
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME"
+
+      - name: Archive iPhone app
+        run: |
+          xcodebuild \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME" \
+            -sdk iphoneos \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/MyApp.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p "$RUNNER_TEMP/Payload"
+
+          APP=$(find "$RUNNER_TEMP/MyApp.xcarchive/Products/Applications" \
+            -maxdepth 1 -name "*.app" -print -quit)
+
+          if [ -z "$APP" ]; then
+            echo "No compiled iOS app found!"
+            exit 1
+          fi
+
+          cp -R "$APP" "$RUNNER_TEMP/Payload/"
+
+          cd "$RUNNER_TEMP"
+          ditto -c -k --sequesterRsrc --keepParent \
+            Payload Unsigned-iPhone.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Unsigned-iPhone-IPA
+          path: ${{ runner.temp }}/Unsigned-iPhone.ipa
+          if-no-files-found: error
