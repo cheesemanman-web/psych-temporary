@@ -15,8 +15,8 @@ jobs:
     runs-on: macos-15
 
     env:
-      PROJECT_PATH: MyApp.xcodeproj
-      SCHEME: MyApp
+      PROJECT_PATH: PsychEngine.xcodeproj
+      SCHEME: PsychEngine
 
     steps:
       - name: Checkout project
@@ -37,9 +37,28 @@ jobs:
             -resolvePackageDependencies \
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME"
+            
+      - name: Install Haxe
+        run: |
+          brew update
+          brew install haxe neko
+
+          echo "$(brew --prefix haxe)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix neko)/bin" >> "$GITHUB_PATH"
+
+          haxe -version
+          haxelib version
+          
+      - name: Install Haxe dependencies
+        run: |
+          haxelib setup ~/haxelib
+          haxelib install hmm
+          haxelib run hmm install
 
       - name: Archive iPhone app
         run: |
+          set -o pipefail
+
           xcodebuild \
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME" \
@@ -47,14 +66,17 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/MyApp.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -jobs 1 \
+            IPHONEOS_DEPLOYMENT_TARGET=12.0 \
             CODE_SIGNING_ALLOWED=NO \
-            archive
+            archive 2>&1 | tee "$RUNNER_TEMP/xcode-build.log"
 
       - name: Package unsigned IPA
         run: |
           mkdir -p "$RUNNER_TEMP/Payload"
 
-          APP=$(find "$RUNNER_TEMP/MyApp.xcarchive/Products/Applications" \
+          APP=$(find "$RUNNER_TEMP/PsychEngine.xcarchive/Products/Applications" \
             -maxdepth 1 -name "*.app" -print -quit)
 
           if [ -z "$APP" ]; then
@@ -66,11 +88,11 @@ jobs:
 
           cd "$RUNNER_TEMP"
           ditto -c -k --sequesterRsrc --keepParent \
-            Payload Unsigned-iPhone.ipa
+            Payload PsychEngine.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: Unsigned-iPhone-IPA
-          path: ${{ runner.temp }}/Unsigned-iPhone.ipa
+          path: ${{ runner.temp }}/PsychEngine.ipa
           if-no-files-found: error
