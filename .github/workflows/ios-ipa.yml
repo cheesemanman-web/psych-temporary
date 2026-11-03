@@ -38,17 +38,24 @@ jobs:
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME"
 
+
       - name: Archive iPhone app
         run: |
+          set -o pipefail
+
           xcodebuild \
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME" \
             -sdk iphoneos \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/PsychEngine.xcarchive" \
+            -archivePath "$RUNNER_TEMP/MyApp.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -jobs 1 \
+            -parallelizeTargets NO \
+            IPHONEOS_DEPLOYMENT_TARGET=12.0 \
             CODE_SIGNING_ALLOWED=NO \
-            archive
+            archive 2>&1 | tee "$RUNNER_TEMP/xcode-build.log"
 
       - name: Package unsigned IPA
         run: |
